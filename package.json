@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "jimp": "^0.22.12",
+    "tesseract.js": "^5.0.4"
+  }
+}
