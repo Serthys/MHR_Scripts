@@ -5,10 +5,10 @@ It uses:
 - [Node](https://nodejs.org/en) to run Optical Character Recognition using [tesseract.js](https://tesseract.projectnaptha.com/)
 
 # Usage
-## Qurious_Armor_Augment.ahk
+## [Qurious_Armor_Augment.ahk](https://github.com/Serthys/MHR_Scripts/blob/main/Qurious_Armor_Augment.ahk)
 Run the script with the game open and the caracter located in Elgado.
 
-## screenshot-filter.mjs (to improve)
+## [screenshot-filter.mjs](https://github.com/Serthys/MHR_Scripts/blob/main/screenshot-filter.mjs) (to improve)
 Run to analize the augment screenshots taken with OCR and export a detailed text log with the results, the results then can be filtered using common unix commands.
 
 Analize the screenshots and output the text to a file:
