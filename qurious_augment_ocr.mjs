@@ -1,5 +1,5 @@
 // How to use:
-// clear ; node.exe screenshot-filter.mjs > augment.log ; cat augment.log | grep INFO | grep -B 1 --file=qurious_augment_filter.txt | grep -B 1 --file=qurious_skills_filter.txt ; cat augment.log | grep -v DEBUG | grep -B 1 ERROR
+// clear ; node.exe qurious_augment_ocr.mjs > augment.log ; cat augment.log | grep INFO | grep -B 1 --file=qurious_augment_filter.txt | grep -B 1 --file=qurious_skills_filter.txt ; cat augment.log | grep -v DEBUG | grep -B 1 ERROR
 
 import Jimp from 'jimp';
 import * as fs from 'fs';
