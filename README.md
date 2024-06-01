@@ -6,7 +6,7 @@ It uses:
 
 # Usage
 ## [Qurious_Armor_Augment.ahk](https://github.com/Serthys/MHR_Scripts/blob/main/Qurious_Armor_Augment.ahk)
-Run the script with the game open and the caracter located in Elgado.
+Automatically rolls augments rolls on armor and takes screenshots, see the script file for more details. Uses the file [augments_conf.ini](https://github.com/Serthys/MHR_Scripts/blob/main/augments_conf.ini) to configure mutliple parameters.
 
 ## [qurious_augment_ocr.mjs](https://github.com/Serthys/MHR_Scripts/blob/main/qurious_augment_ocr.mjs) (to improve)
 Run to analize the augment screenshots taken with OCR and export a detailed text log with the results, the results then can be filtered using common unix commands.
