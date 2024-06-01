@@ -23,6 +23,10 @@ Filter the exported result text file to show only any errors (usually some bad O
 ```
 cat augment.log | grep -v DEBUG | grep -B 1 ERROR
 ```
- Output sample:
+Input sample:
+
+![0-0023](https://github.com/Serthys/MHR_Scripts/assets/13573099/b730cd2f-5c92-4052-9035-143b7e710ff0)
+
+Output sample:
  
- ![image](https://github.com/Serthys/MHR_Scripts/assets/13573099/9d89273a-c7e4-4c81-9d24-b1e5df9325a5)
+![image](https://github.com/Serthys/MHR_Scripts/assets/13573099/9d89273a-c7e4-4c81-9d24-b1e5df9325a5)
