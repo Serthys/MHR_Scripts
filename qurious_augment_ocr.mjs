@@ -11,7 +11,7 @@ const SCREENSHOT_DIR = './Screenshots';
 
 const SKILLS = ['Critical Eye', 'Critical Boost', 'Weakness Exploit', 'Master\'s Touch', 'Razor Sharp', 'Spare Shot', 'Normal/Rapid Up', 'Pierce Up', 'Spread Up', 'Ammo Up', 'Rapid Fire Up', 'Attack Boost', 'Guts', 'Handicraft', 'Agitator', 'Peak Performance', 'Resentment', 'Resuscitate', 'Coalescence', 'Latent Power', 'Maximum Might', 'Good Luck', 'Burst', 'Tune-Up', 'Rapid Morph', 'Artillery', 'Sneak Attack', 'Blood Rite', 'Bloodlust', 'Buildup Boost', 'Frostcraft', 'Dragon Conversion', 'Protective Polish', 'Mushroomancer', 'Mind\'s Eye', 'Critical Element', 'Ballistics', 'Critical Draw', 'Focus', 'Power Prolonger', 'Offensive Guard', 'Earplugs', 'Heroics', 'Hellfire Cloak', 'Wirebug Whisperer', 'Charge Master', 'Foray', 'Grinder (S)', 'Bladescale Hone', 'Redirection', 'Element Exploit', 'Adrenaline Rush', 'Furious', 'Status Trigger', 'Dragonheart', 'Mail of Hellfire', 'Strife', 'Powder Mantle', 'Wind Mantle', 'Frenzied Bloodlust', 'Load Shells', 'Guard', 'Guard Up', 'Poison Attack', 'Paralysis Attack', 'Sleep Attack', 'Blast Attack', 'Marathon Runner', 'Constitution', 'Stamina Surge', 'Punishing Draw', 'Quick Sheathe', 'Slugger', 'Special Ammo Boost', 'Steadiness', 'Speed Eating', 'Tremor Resistance', 'Bubbly Dance', 'Evade Window', 'Evade Extender', 'Partbreaker', 'Wall Runner', 'Counterstrike', 'Defiance', 'Reload Speed', 'Recoil Down', 'Chameleos Blessing', 'Kushala Blessing', 'Teostra Blessing', 'Embolden', 'Intrepid Heart', 'Flinch Free', 'Stamina Thief', 'Fire Attack', 'Water Attack', 'Ice Attack', 'Thunder Attack', 'Dragon Attack', 'Affinity Sliding', 'Horn Maestro', 'Defense Boost', 'Divine Blessing', 'Recovery Up', 'Recovery Speed', 'Windproof', 'Blight Resistance', 'Poison Resistance', 'Paralysis Resistance', 'Sleep Resistance', 'Stun Resistance', 'Muck Resistance', 'Blast Resistance', 'Speed Sharpening', 'Item Prolonger', 'Wide-Range', 'Free Meal', 'Fortify', 'Hunger Resistance', 'Leap of Faith', 'Diversion', 'Master Mounter', 'Spiribird\'s Call', 'Wall Runner (Boost)',
 	// Skills not available but can show up via skill down
-	'Dereliction'
+	'Dereliction', 'Heaven-Sent', 'Blood Awakening'
 ];
 
 const AUGMENT_PAGE_ARROW_LOCATION = { x: 125, y: 66 };
@@ -57,6 +57,14 @@ const info = (string) => {
 
 const error = (string) => {
 	console.log(ANSI_RED + '[ERROR]' + ANSI_CLEAR + ' ' + string);
+}
+
+const getTimeDiff = (start, end) => {
+	var milisec_diff = Math.abs(end.getTime() - start.getTime());
+	var timeDiff = new Date(milisec_diff);
+	return timeDiff.getMinutes() + ' Minutes, '
+		+ timeDiff.getSeconds() + ' Seconds, '
+		+ timeDiff.getMilliseconds() + ' Milliseconds';
 }
 
 const listFiles = async (directory) => {
@@ -157,12 +165,39 @@ const blockSkillSquares = (image, hasAugmentPages) => {
 		);
 	}
 };
-/** Methods end **/
 
-for (const fileName of await listFiles(SCREENSHOT_DIR)) {
-	info('Reading screenshot: [' + ANSI_YELLOW + fileName + ANSI_CLEAR + '].');
-	const screenshotPath = `${SCREENSHOT_DIR}/${fileName}`;
-	const image = await Jimp.read(screenshotPath);
+const saveImage = async (imageOrBuffer, filename) => {
+	if (imageOrBuffer.buffer) {
+		imageOrBuffer = await Jimp.read(imageOrBuffer);
+	}
+	await imageOrBuffer.writeAsync(filename);
+}
+
+const getCroppedAugmentedStatus = async (filename) => {
+	const image = await Jimp.read(filename);
+	const imageBuffer = await image.getBufferAsync('image/png');
+	const imageText = await tesseractWorker.recognize(imageBuffer);
+	const currentStatusLine = imageText.data.lines.find(l => l.text.includes('Current Status'));
+	if (!currentStatusLine) {
+		// the image is probably already cropped
+		return image;
+	}
+	// the images contains things outside of the augmentes section, crop it
+	const augmentedStatusLine = imageText.data.lines.find(l => l.text.includes('Augmented Status'));
+	const title = augmentedStatusLine.words.find(w => w.text === 'Augmented');
+	const fullCropX = title.bbox.x0 - 102;
+	const fullCropY = title.bbox.y0 - 12;
+	const fullCCopWidth = 426;
+	const fullCropHeight = 727;
+	// await saveImage(image, `${SCREENSHOT_DIR}/cropFullScreen.png`);
+	return image.crop(fullCropX, fullCropY, fullCCopWidth, fullCropHeight);
+};
+
+const analizeScreenshot = async (screenshotName) => {
+	info('Reading screenshot: [' + ANSI_YELLOW + screenshotName + ANSI_CLEAR + '].');
+	const screenshotPath = `${SCREENSHOT_DIR}/${screenshotName}`;
+
+	const image = await getCroppedAugmentedStatus(screenshotPath);
 
 	const hasAugmentPages = await checkAugmentPages(image);
 	// const onlyTwoSkillsChanged = await hasOnly2SkillsChanged(image, hasAugmentPages);
@@ -179,51 +214,65 @@ for (const fileName of await listFiles(SCREENSHOT_DIR)) {
 	const width = image.bitmap.width - cropX - 40; // crop riget border
 	const height = image.bitmap.height - cropY - (hasAugmentPages ? 130 - AUGMENT_PAGINATION_Y_OFFSET : 130); // crop the bottom to remove the confirm
 	image.crop(cropX, cropY, width, height);
-	// await image.writeAsync(`${SCREENSHOT_DIR}/test.png`);
+	// await saveImage(image, `${SCREENSHOT_DIR}/test.png`);
 	const cropped = await image.getBufferAsync('image/png')
-
 	const ret = await tesseractWorker.recognize(cropped);
 	const reading = ret.data.text;
-	let lines = reading.split('\n').filter((l) => l.length);
-	lines = lines.map((l) => l.startsWith('Lv ') ? l.split('Lv ')[1] : l);
+	let lines = reading
+		.split('\n') // split paragraph into a list of lines
+		.filter((l) => l.length) // remove empty lines
+		.map(s => s.replace(/[\]]/, '1')); // replace wrong OCR'd ']' to '1'
+	lines = lines.map((l) => l.startsWith('Lv ') ? l.split('Lv ')[1] : l); // remove the 'Lv' text
 	debug('Raw text: ' + lines + '');
-	let augments = '[';
+	let augmentOutputText = '[';
 	let augmentMerit = 0;
 	for (let i = 0; i < lines.length - 1; i += 2) {
-		if (i != 0) augments += ', ';
+		if (i != 0) augmentOutputText += ', ';
 		// keep numbers, lowercase, uppercase, space, aphostrophe ('), dash (-) and parenthesis
 		const skillName = lines[i].replace(/[^\x30-\x39\x41-\x5A\x61-\x7A /'\-\(\)]/, '').trim();
-		debug('Skill Name: ' + (i / 2 + 1) + ': ' + skillName + '');
+		debug('Skill Name ' + (i / 2 + 1) + ': ' + skillName);
 		if (!SKILLS.includes(skillName)) {
-			error('Skill: ' + skillName + ' not found on list of possible skills');
+			error(ANSI_RED + 'Skill: ' + skillName + ' not found on list of possible skills.' + ANSI_CLEAR);
 		}
-		const skillChange = lines[i + 1].replace(/[\]]/, '1').trim(); // replace wrong OCR'd "]" to "1"
+		const skillChange = lines[i + 1].trim();
+		debug('Skill Change ' + (i / 2 + 1) + ': ' + skillChange);
 		if (skillChange.includes('+')) {
-			augments += ANSI_GREEN + skillName + ' ' + skillChange + ANSI_CLEAR;
-			if (skillChange.includes('1')) {
-				augmentMerit++;
-			} else {
-				augmentMerit += 2;
-			}
+			augmentOutputText += ANSI_GREEN + skillName + ' ' + skillChange + ANSI_CLEAR;
+			augmentMerit += parseInt(skillChange);
 		} else if (skillChange.includes('-') || skillChange.includes('None')) {
-			augments += ANSI_RED + skillName + ' ' + skillChange + ANSI_CLEAR;
+			augmentOutputText += ANSI_RED + skillName + ' ' + skillChange + ANSI_CLEAR;
 		} else {
 			error('Unexpected skill level change:  [' + skillChange + '].');
 		}
 	}
 	if (slotsIncreased) {
-		if (augments.length > 1) {
-			augments += ', ';
+		if (augmentOutputText.length > 1) {
+			augmentOutputText += ', ';
 		}
-		augments += ANSI_GREEN + '+' + slotsIncreased + ' Slot/s' + ANSI_CLEAR;
+		augmentOutputText += ANSI_GREEN + '+' + slotsIncreased + ' Slot/s' + ANSI_CLEAR;
 		augmentMerit += slotsIncreased;
 	}
-	augments += (hasAugmentPages ? (', ' + ANSI_RED + '...' + ANSI_CLEAR) : '') + ']';
+	if (hasAugmentPages) {
+		augmentOutputText += ', ' + ANSI_RED + '...' + ANSI_CLEAR;
+	}
+	augmentOutputText += ']';
 
 	// Has slot and skill or more than one skill
-	info('Augments: ' + ANSI_YELLOW + '(' + augmentMerit + ')' + ANSI_CLEAR + augments + '.');
+	info('Augments: ' + ANSI_YELLOW + '(' + augmentMerit + ')' + ANSI_CLEAR + augmentOutputText + '.');
+}
 
-	// break; // uncomment to run only one file
-};
+const main = async () => {
+	const startTime = new Date();
+	for (const fileName of await listFiles(SCREENSHOT_DIR)) {
+		const screenshotTime = new Date();
+		await analizeScreenshot(fileName);
+		info('Screenshot analysis time:' + getTimeDiff(screenshotTime, new Date()));
+		// break; // uncomment to analize only one file
+	};
+	info('Total screenshot analysis time:' + getTimeDiff(startTime, new Date()));
+}
+
+/** Methods end **/
+await main();
 
 await tesseractWorker.terminate();
