@@ -48,20 +48,28 @@ const tesseractWorker = await createWorker('eng');
 /** Methods **/
 
 const debug = (string) => {
-	console.debug(string);
+	console.debug(ANSI_MAGENTA + '[DEBUG]' + ANSI_CLEAR + ' ' + string);
+}
+
+const info = (string) => {
+	console.log(ANSI_CYAN + '[INFO]' + ANSI_CLEAR + ' ' + string);
+}
+
+const error = (string) => {
+	console.log(ANSI_RED + '[ERROR]' + ANSI_CLEAR + ' ' + string);
 }
 
 const listFiles = async (directory) => {
 	const dirEntries = await fs.readdirSync(directory, { withFileTypes: true });
 	return dirEntries
-		.filter(dirEntry => dirEntry.isFile() && dirEntry.name.includes(".png"))
+		.filter(dirEntry => dirEntry.isFile() && dirEntry.name.includes('.png'))
 		.map(dirEntry => dirEntry.name);
 };
 
 const checkAugmentPages = async (image) => {
 	const rgbArrow = Jimp.intToRGBA(image.getPixelColor(AUGMENT_PAGE_ARROW_LOCATION.x, AUGMENT_PAGE_ARROW_LOCATION.y));
 	if (rgbArrow.r > COLOR_MIN_ARROW && rgbArrow.g > COLOR_MIN_ARROW && rgbArrow.b > COLOR_MIN_ARROW) {
-		debug(ANSI_MAGENTA + '[DEBUG]' + ANSI_CLEAR + ' Screenshot has 4 or more skills changed.')
+		debug('Screenshot has 4 or more skills changed.')
 		return true;
 	}
 	return false;
@@ -75,7 +83,7 @@ const hasOnly2SkillsChanged = async (image, hasAugmentPages) => {
 	const rgbBorder = Jimp.intToRGBA(image.getPixelColor(THIRD_SKILL_FIRST_BORDER.x, THIRD_SKILL_FIRST_BORDER.y));
 	debug(rgb);
 	if (rgbBorder.r == COLOR_NO_SKILL_LINE.r && rgbBorder.g == COLOR_NO_SKILL_LINE.g && rgbBorder.b == COLOR_NO_SKILL_LINE.b) {
-		debug(ANSI_MAGENTA + '[DEBUG]' + ANSI_CLEAR + ' Screenshot has only 2 skills changed.')
+		debug('Screenshot has only 2 skills changed.')
 		return true;
 	} else if (rgbBorder.r > COLOR_NO_SKILL_LINE.r && rgbBorder.r < COLOR_BACKGROUD_NO_SKILL_CHANGE.r) {
 		// red hue present
@@ -83,7 +91,7 @@ const hasOnly2SkillsChanged = async (image, hasAugmentPages) => {
 		debug('rgbBorder: ' + JSON.stringify(rgbBorder));
 		debug('rgbNoBorder: ' + JSON.stringify(rgbNoBorder));
 		if (Math.abs(rgbNoBorder.r - rgbBorder.r) < 20) {
-			debug(ANSI_MAGENTA + '[DEBUG]' + ANSI_CLEAR + ' Screenshot has only 2 skills changed.')
+			debug('Screenshot has only 2 skills changed.')
 			return true;
 		}
 	}
@@ -95,10 +103,10 @@ const hasfirstSkillWithOnlyOneLevel = async (image) => {
 	const rgb = Jimp.intToRGBA(image.getPixelColor(FIRST_SKILL_SECOND_SLOT.x, FIRST_SKILL_SECOND_SLOT.y));
 	debug(rgb);
 	if (rgb.g > COLOR_MIN_GREEN_FOR_SKILL_INCRESE) {
-		debug(ANSI_MAGENTA + '[DEBUG]' + ANSI_CLEAR + ' Screenshot has 1+ levels or more on the first skill.')
+		debug('Screenshot has 1+ levels or more on the first skill.')
 		return false;
 	}
-	debug(ANSI_MAGENTA + '[DEBUG]' + ANSI_CLEAR + ' Screenshot only has 1 level on the first skill.')
+	debug('Screenshot only has 1 level on the first skill.')
 	return true;
 };
 
@@ -124,9 +132,9 @@ const checkSlotIncreses = async (image, slotLocation, hasAugmentPages) => {
 	color.r = Math.round(color.r / count);
 	color.g = Math.round(color.g / count);
 	color.b = Math.round(color.b / count);
-	debug(ANSI_MAGENTA + '[DEBUG]' + ANSI_CLEAR + ' slot average color: [' + JSON.stringify(color) + '].');
+	debug('Slot average color: [' + JSON.stringify(color) + '].');
 	if (color.g >= 65 && color.r < 55 && color.b < 55) {
-		debug(ANSI_MAGENTA + '[DEBUG]' + ANSI_CLEAR + ' Screenshot has slot/s on' + JSON.stringify(slotLocation) + '.');
+		debug('Screenshot has slot/s on' + JSON.stringify(slotLocation) + '.');
 		return true;
 	}
 	return false;
@@ -152,7 +160,7 @@ const blockSkillSquares = (image, hasAugmentPages) => {
 /** Methods end **/
 
 for (const fileName of await listFiles(SCREENSHOT_DIR)) {
-	console.log(ANSI_CYAN + '[INFO]' + ANSI_CLEAR + ' Reading screenshot: [' + ANSI_YELLOW + fileName + ANSI_CLEAR + '].');
+	info('Reading screenshot: [' + ANSI_YELLOW + fileName + ANSI_CLEAR + '].');
 	const screenshotPath = `${SCREENSHOT_DIR}/${fileName}`;
 	const image = await Jimp.read(screenshotPath);
 
@@ -163,7 +171,7 @@ for (const fileName of await listFiles(SCREENSHOT_DIR)) {
 	const slot2Increased = await checkSlotIncreses(image, LOCATION_SECOND_SLOT, hasAugmentPages);
 	const slot3Increased = await checkSlotIncreses(image, LOCATION_THIRD_SLOT, hasAugmentPages);
 	const slotsIncreased = slot1Increased + slot2Increased + slot3Increased;
-	debug(ANSI_MAGENTA + '[DEBUG]' + ANSI_CLEAR + " Slots increased: " + slotsIncreased + ' (' + slot1Increased + "," + slot2Increased + "," + slot3Increased + ')')
+	debug('Slots increased: ' + slotsIncreased + ' (' + slot1Increased + ',' + slot2Increased + ',' + slot3Increased + ')')
 
 	blockSkillSquares(image, hasAugmentPages);
 	const cropX = 59;// crop left side to remove the skill symbols
@@ -178,16 +186,16 @@ for (const fileName of await listFiles(SCREENSHOT_DIR)) {
 	const reading = ret.data.text;
 	let lines = reading.split('\n').filter((l) => l.length);
 	lines = lines.map((l) => l.startsWith('Lv ') ? l.split('Lv ')[1] : l);
-	debug(ANSI_MAGENTA + '[DEBUG]' + ANSI_CLEAR + ' Raw text: ' + lines + '');
+	debug('Raw text: ' + lines + '');
 	let augments = '[';
 	let augmentMerit = 0;
 	for (let i = 0; i < lines.length - 1; i += 2) {
 		if (i != 0) augments += ', ';
-		// keep numbers, lowercase, uppercase, space,  aphostrophe ('), dash (-) and parenthesis
+		// keep numbers, lowercase, uppercase, space, aphostrophe ('), dash (-) and parenthesis
 		const skillName = lines[i].replace(/[^\x30-\x39\x41-\x5A\x61-\x7A /'\-\(\)]/, '').trim();
-		debug(ANSI_MAGENTA + '[DEBUG]' + ANSI_CLEAR + ' skillName ' + (i / 2 + 1) + ': ' + skillName + '');
+		debug('Skill Name: ' + (i / 2 + 1) + ': ' + skillName + '');
 		if (!SKILLS.includes(skillName)) {
-			console.log(ANSI_RED + '[ERROR]' + ANSI_CLEAR + ' Skill: ' + skillName + ' not found on list of possible skills');
+			error('Skill: ' + skillName + ' not found on list of possible skills');
 		}
 		const skillChange = lines[i + 1].replace(/[\]]/, '1').trim(); // replace wrong OCR'd "]" to "1"
 		if (skillChange.includes('+')) {
@@ -200,7 +208,7 @@ for (const fileName of await listFiles(SCREENSHOT_DIR)) {
 		} else if (skillChange.includes('-') || skillChange.includes('None')) {
 			augments += ANSI_RED + skillName + ' ' + skillChange + ANSI_CLEAR;
 		} else {
-			console.log(ANSI_RED + '[ERROR]' + ANSI_CLEAR + ' Unexpected skill level change:  [' + skillChange + '].');
+			error('Unexpected skill level change:  [' + skillChange + '].');
 		}
 	}
 	if (slotsIncreased) {
@@ -213,7 +221,7 @@ for (const fileName of await listFiles(SCREENSHOT_DIR)) {
 	augments += (hasAugmentPages ? (', ' + ANSI_RED + '...' + ANSI_CLEAR) : '') + ']';
 
 	// Has slot and skill or more than one skill
-	console.log(ANSI_CYAN + '[INFO]' + ANSI_CLEAR + ' Augments: ' + ANSI_YELLOW + '(' + augmentMerit + ')' + ANSI_CLEAR + augments + '.');
+	info('Augments: ' + ANSI_YELLOW + '(' + augmentMerit + ')' + ANSI_CLEAR + augments + '.');
 
 	// break; // uncomment to run only one file
 };
