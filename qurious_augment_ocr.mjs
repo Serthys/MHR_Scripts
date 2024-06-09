@@ -122,11 +122,13 @@ const checkSlotIncreses = async (image, slotLocation, hasAugmentPages) => {
 	const color = { r: 0, g: 0, b: 0 };
 	let count = 0;
 	const startingY = slotLocation.y + (hasAugmentPages ? AUGMENT_PAGINATION_Y_OFFSET : 0);
-	image.scan(
+	const scansquare = [
 		slotLocation.x,
 		startingY,
 		SLOT_WIDTH,
-		1,
+		1]
+	image.scan(
+		...scansquare,
 		(x, y, index) => {
 			const red = image.bitmap.data[index + 0];
 			const green = image.bitmap.data[index + 1];
@@ -140,7 +142,7 @@ const checkSlotIncreses = async (image, slotLocation, hasAugmentPages) => {
 	color.r = Math.round(color.r / count);
 	color.g = Math.round(color.g / count);
 	color.b = Math.round(color.b / count);
-	debug('Slot average color: [' + JSON.stringify(color) + '].');
+	debug('Slot average color: [' + JSON.stringify(color) + '], (location: [' + scansquare + '])');
 	if (color.g >= 65 && color.r < 55 && color.b < 55) {
 		debug('Screenshot has slot/s on' + JSON.stringify(slotLocation) + '.');
 		return true;
@@ -173,31 +175,35 @@ const saveImage = async (imageOrBuffer, filename) => {
 	await imageOrBuffer.writeAsync(filename);
 }
 
-const getCroppedAugmentedStatus = async (filename) => {
-	const image = await Jimp.read(filename);
+const getCropCoords = async (image) => {
 	const imageBuffer = await image.getBufferAsync('image/png');
 	const imageText = await tesseractWorker.recognize(imageBuffer);
 	const currentStatusLine = imageText.data.lines.find(l => l.text.includes('Current Status'));
 	if (!currentStatusLine) {
 		// the image is probably already cropped
-		return image;
+		return null;
 	}
 	// the images contains things outside of the augmentes section, crop it
-	const augmentedStatusLine = imageText.data.lines.find(l => l.text.includes('Augmented Status'));
-	const title = augmentedStatusLine.words.find(w => w.text === 'Augmented');
-	const fullCropX = title.bbox.x0 - 102;
-	const fullCropY = title.bbox.y0 - 12;
-	const fullCCopWidth = 426;
-	const fullCropHeight = 727;
-	// await saveImage(image, `${SCREENSHOT_DIR}/cropFullScreen.png`);
-	return image.crop(fullCropX, fullCropY, fullCCopWidth, fullCropHeight);
+	const currentStatus = imageText.data.lines.find(l => l.text.includes('Current Status')).words.find(w => w.text === 'Status');
+	const bbox = [
+		currentStatus.symbols[5].bbox.x0 + 209,
+		currentStatus.symbols[5].bbox.y0 - 18,
+		428,
+		730
+	]
+	return bbox;
 };
 
-const analizeScreenshot = async (screenshotName) => {
-	info('Reading screenshot: [' + ANSI_YELLOW + screenshotName + ANSI_CLEAR + '].');
-	const screenshotPath = `${SCREENSHOT_DIR}/${screenshotName}`;
+const analizeScreenshot = async (image, coords) => {
 
-	const image = await getCroppedAugmentedStatus(screenshotPath);
+	if (!coords) {
+		coords = await getCropCoords(image);
+	}
+	if (coords) {
+		debug('Crop location: ' + coords);
+		image = image.crop(...coords);
+		// await saveImage(image, `${SCREENSHOT_DIR}/cropFullScreen.png`);
+	}
 
 	const hasAugmentPages = await checkAugmentPages(image);
 	// const onlyTwoSkillsChanged = await hasOnly2SkillsChanged(image, hasAugmentPages);
@@ -259,14 +265,19 @@ const analizeScreenshot = async (screenshotName) => {
 
 	// Has slot and skill or more than one skill
 	info('Augments: ' + ANSI_YELLOW + '(' + augmentMerit + ')' + ANSI_CLEAR + augmentOutputText + '.');
+	return coords;
 }
 
 const main = async () => {
 	const startTime = new Date();
+	let coords;
 	for (const fileName of await listFiles(SCREENSHOT_DIR)) {
 		const screenshotTime = new Date();
-		await analizeScreenshot(fileName);
-		info('Screenshot analysis time:' + getTimeDiff(screenshotTime, new Date()));
+		info('Reading screenshot: [' + ANSI_YELLOW + fileName + ANSI_CLEAR + '].');
+		const screenshotPath = `${SCREENSHOT_DIR}/${fileName}`;
+		const image = await Jimp.read(screenshotPath);
+		coords = await analizeScreenshot(image, coords);
+		debug('Screenshot analysis time:' + getTimeDiff(screenshotTime, new Date()));
 		// break; // uncomment to analize only one file
 	};
 	info('Total screenshot analysis time:' + getTimeDiff(startTime, new Date()));
